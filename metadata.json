@@ -1,0 +1,8 @@
+{
+  "name": "CineForge",
+  "description": "Autonomous AI-powered cinematic documentary production studio with archival research, neural voiceover narration, continuous spatial motion design, and verified MP4 rendering.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

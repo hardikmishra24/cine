@@ -1,0 +1,514 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Pillar 1: Global Default-Deny Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Global Hardened Primitives ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isProjectOwner(projectId) {
+      return exists(/databases/$(database)/documents/projects/$(projectId)) &&
+        get(/databases/$(database)/documents/projects/$(projectId)).data.ownerId == request.auth.uid;
+    }
+
+    function optionalString(data, field, maxLen) {
+      return !(field in data) || (data[field] is string && data[field].size() <= maxLen);
+    }
+
+    function optionalNumber(data, field) {
+      return !(field in data) || (data[field] is number);
+    }
+
+    function optionalBool(data, field) {
+      return !(field in data) || (data[field] is bool);
+    }
+
+    function optionalMap(data, field) {
+      return !(field in data) || (data[field] is map);
+    }
+
+    function optionalList(data, field, maxItems) {
+      return !(field in data) || (data[field] is list && data[field].size() <= maxItems);
+    }
+
+    // --- Validation Blueprints (Anti-Update-Gap) ---
+    function isValidUserProfile(data, userId) {
+      return data.keys().hasAll(['uid', 'email', 'displayName', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['uid', 'email', 'displayName', 'photoURL', 'createdAt', 'updatedAt']) &&
+        data.uid == request.auth.uid &&
+        data.uid == userId &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 254 &&
+        data.displayName is string && data.displayName.size() <= 120 &&
+        optionalString(data, 'photoURL', 1000) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidProject(data, projectId) {
+      return data.keys().hasAll(['id', 'ownerId', 'title', 'inputMode', 'status', 'activeStage', 'renderStatus', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly([
+          'id', 'ownerId', 'title', 'inputMode', 'topic', 'language',
+          'narratorLanguage', 'narratorAccent', 'voiceCharacter', 'targetDurationSec',
+          'aspectRatio', 'resolution', 'frameRate', 'visualStyle', 'videoStylePreset', 'worldEnvironment',
+          'status', 'activeStage', 'thumbnailUrl', 'narrationDurationSec', 'renderStatus',
+          'researchApproved', 'visualDirectionApproved', 'scriptApproved', 'voiceApproved', 'storyboardApproved', 'assetsApproved',
+          'researchSummary', 'researchPreferences', 'visualDirection', 'researchEntities',
+          'voiceProfile', 'audioPostProcessing', 'masterAudio', 'audioMixer',
+          'uploadedReferences', 'animatedRigsScriptHash', 'mediaFulfilledHash', 'createdAt', 'updatedAt'
+        ]) &&
+        data.id == projectId &&
+        data.ownerId == request.auth.uid &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+        data.inputMode in ['topic', 'script', 'voiceover'] &&
+        data.status in ['draft', 'in_production', 'rendered', 'archived'] &&
+        data.activeStage in ['research', 'script', 'voice', 'assets', 'storyboard', 'motion', 'render'] &&
+        data.renderStatus in ['idle', 'rendering', 'completed', 'failed'] &&
+        optionalString(data, 'topic', 4000) &&
+        optionalString(data, 'language', 60) &&
+        optionalString(data, 'narratorLanguage', 60) &&
+        optionalString(data, 'narratorAccent', 120) &&
+        optionalString(data, 'voiceCharacter', 120) &&
+        optionalNumber(data, 'targetDurationSec') &&
+        optionalString(data, 'aspectRatio', 20) &&
+        optionalString(data, 'resolution', 30) &&
+        optionalNumber(data, 'frameRate') &&
+        optionalString(data, 'visualStyle', 500) &&
+        (!('videoStylePreset' in data) || data.videoStylePreset in ['ted_ed', 'simple_history', 'history_on_maps', 'minute_earth', 'historically', 'archival_documentary']) &&
+        (!('worldEnvironment' in data) || data.worldEnvironment in ['desk', 'map', 'board', 'archive']) &&
+        optionalString(data, 'thumbnailUrl', 1000) &&
+        optionalNumber(data, 'narrationDurationSec') &&
+        optionalBool(data, 'researchApproved') &&
+        optionalBool(data, 'visualDirectionApproved') &&
+        optionalBool(data, 'scriptApproved') &&
+        optionalBool(data, 'voiceApproved') &&
+        optionalBool(data, 'storyboardApproved') &&
+        optionalBool(data, 'assetsApproved') &&
+        optionalString(data, 'researchSummary', 20000) &&
+        optionalString(data, 'researchPreferences', 4000) &&
+        optionalMap(data, 'visualDirection') &&
+        optionalMap(data, 'researchEntities') &&
+        optionalMap(data, 'voiceProfile') &&
+        optionalMap(data, 'audioPostProcessing') &&
+        optionalMap(data, 'masterAudio') &&
+        optionalMap(data, 'audioMixer') &&
+        optionalList(data, 'uploadedReferences', 25) &&
+        optionalString(data, 'animatedRigsScriptHash', 128) &&
+        optionalString(data, 'mediaFulfilledHash', 128) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidSource(data, projectId, sourceId) {
+      return data.keys().hasAll(['id', 'ownerId', 'projectId', 'title', 'url', 'createdAt']) &&
+        data.keys().hasOnly(['id', 'ownerId', 'projectId', 'title', 'url', 'publisher', 'sourceType', 'summary', 'dateRange', 'createdAt']) &&
+        data.id == sourceId &&
+        data.projectId == projectId &&
+        data.ownerId == request.auth.uid &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 300 &&
+        data.url is string && data.url.size() <= 1000 &&
+        optionalString(data, 'publisher', 160) &&
+        optionalString(data, 'sourceType', 60) &&
+        optionalString(data, 'summary', 3000) &&
+        optionalString(data, 'dateRange', 80) &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidAsset(data, projectId, assetId) {
+      return data.keys().hasAll(['id', 'ownerId', 'projectId', 'title', 'sourceProvider', 'category', 'approvalStatus', 'downloadStatus', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly([
+          'id', 'ownerId', 'projectId', 'title', 'description', 'sourceProvider',
+          'sourceUrl', 'imageUrl', 'videoUrl', 'thumbnailUrl', 'mediaKind', 'durationSec',
+          'creator', 'license', 'category', 'approvalStatus', 'downloadStatus',
+          'assignedSegmentId', 'assignedBeatId', 'limitationNote', 'animatedRigSpec', 'createdAt', 'updatedAt'
+        ]) &&
+        data.id == assetId &&
+        data.projectId == projectId &&
+        data.ownerId == request.auth.uid &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 300 &&
+        data.sourceProvider in ['wikimedia', 'wikimedia_video', 'loc', 'nasa', 'nasa_video', 'upload', 'ai_illustration', 'code_animation'] &&
+        data.category in ['photograph', 'video_clip', 'map', 'document', 'newspaper', 'archive', 'reference', 'illustration', 'animated_rig'] &&
+        data.approvalStatus in ['pending', 'approved', 'rejected'] &&
+        data.downloadStatus in ['ready', 'missing', 'unavailable'] &&
+        (!('mediaKind' in data) || data.mediaKind in ['image', 'video', 'animated_rig']) &&
+        optionalNumber(data, 'durationSec') &&
+        optionalString(data, 'description', 2000) &&
+        optionalString(data, 'sourceUrl', 1200) &&
+        optionalString(data, 'imageUrl', 1200) &&
+        optionalString(data, 'videoUrl', 1200) &&
+        optionalString(data, 'thumbnailUrl', 1200) &&
+        optionalString(data, 'creator', 300) &&
+        optionalString(data, 'license', 200) &&
+        optionalString(data, 'assignedSegmentId', 128) &&
+        optionalString(data, 'assignedBeatId', 128) &&
+        optionalString(data, 'limitationNote', 600) &&
+        optionalMap(data, 'animatedRigSpec') &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidScriptVersion(data, projectId, scriptId) {
+      return data.keys().hasAll(['id', 'ownerId', 'projectId', 'versionNumber', 'isActive', 'isApproved', 'paragraphs', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly([
+          'id', 'ownerId', 'projectId', 'versionNumber', 'label', 'isActive',
+          'isApproved', 'wordCount', 'estimatedDurationSec', 'paragraphs',
+          'pronunciationGuide', 'createdAt', 'updatedAt'
+        ]) &&
+        data.id == scriptId &&
+        data.projectId == projectId &&
+        data.ownerId == request.auth.uid &&
+        data.versionNumber is number && data.versionNumber >= 1 &&
+        data.isActive is bool &&
+        data.isApproved is bool &&
+        data.paragraphs is list && data.paragraphs.size() <= 100 &&
+        optionalString(data, 'label', 160) &&
+        optionalNumber(data, 'wordCount') &&
+        optionalNumber(data, 'estimatedDurationSec') &&
+        optionalList(data, 'pronunciationGuide', 100) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidSegment(data, projectId, segmentId) {
+      return data.keys().hasAll(['id', 'ownerId', 'projectId', 'orderIndex', 'text', 'status', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly([
+          'id', 'ownerId', 'projectId', 'orderIndex', 'text', 'pronunciationHint',
+          'audioUrl', 'durationMs', 'status', 'wordTimestamps', 'pauseMarkers',
+          'version', 'createdAt', 'updatedAt'
+        ]) &&
+        data.id == segmentId &&
+        data.projectId == projectId &&
+        data.ownerId == request.auth.uid &&
+        data.orderIndex is number && data.orderIndex >= 0 &&
+        data.text is string && data.text.size() <= 5000 &&
+        data.status in ['pending', 'generated', 'approved', 'uploaded'] &&
+        optionalString(data, 'pronunciationHint', 500) &&
+        optionalString(data, 'audioUrl', 1000) &&
+        optionalNumber(data, 'durationMs') &&
+        optionalList(data, 'wordTimestamps', 1500) &&
+        optionalList(data, 'pauseMarkers', 200) &&
+        optionalNumber(data, 'version') &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidBeat(data, projectId, beatId) {
+      return data.keys().hasAll(['id', 'ownerId', 'projectId', 'orderIndex', 'startMs', 'endMs', 'narrationText', 'objectType', 'cameraMotion', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly([
+          'id', 'ownerId', 'projectId', 'orderIndex', 'segmentId', 'startMs', 'endMs',
+          'narrationText', 'heroAssetId', 'heroAssetUrl', 'heroVideoUrl', 'videoStartOffsetSec',
+          'heroAssetTitle', 'shotBrief', 'assetSearchQuery', 'rigPrompt', 'fulfillmentStatus',
+          'onScreenText', 'triggerWord', 'sceneType', 'illustrationPrompt', 'dateBadge', 'mapSpec',
+          'animatedRigSpec', 'calloutItems', 'highlightWords', 'wordTimestamps',
+          'objectType', 'worldX', 'worldY', 'worldRotation', 'worldScale',
+          'cameraMotion', 'cameraZoom', 'transition', 'sfxCue', 'notes', 'createdAt', 'updatedAt'
+        ]) &&
+        data.id == beatId &&
+        data.projectId == projectId &&
+        data.ownerId == request.auth.uid &&
+        data.orderIndex is number && data.orderIndex >= 0 &&
+        data.startMs is number && data.startMs >= 0 &&
+        data.endMs is number && data.endMs >= data.startMs &&
+        data.narrationText is string && data.narrationText.size() <= 2000 &&
+        data.objectType in ['photo', 'video_clip', 'document', 'newspaper', 'map', 'title_card', 'illustration', 'cutout', 'diagram', 'animated_rig'] &&
+        data.cameraMotion in ['push_in', 'pull_back', 'pan_left', 'pan_right', 'orbit_drift', 'focus_hold'] &&
+        (!('sceneType' in data) || data.sceneType in ['animated_rig', 'archival_video', 'illustrated_scene', 'animated_map', 'layered_cutout', 'diagram_callout', 'archival_photo', 'kinetic_title']) &&
+        (!('fulfillmentStatus' in data) || data.fulfillmentStatus in ['planned', 'fulfilled', 'fallback']) &&
+        optionalString(data, 'illustrationPrompt', 1200) &&
+        optionalString(data, 'dateBadge', 80) &&
+        optionalMap(data, 'mapSpec') &&
+        optionalMap(data, 'animatedRigSpec') &&
+        optionalList(data, 'calloutItems', 8) &&
+        optionalList(data, 'highlightWords', 12) &&
+        optionalList(data, 'wordTimestamps', 160) &&
+        optionalString(data, 'segmentId', 128) &&
+        optionalString(data, 'heroAssetId', 128) &&
+        optionalString(data, 'heroAssetUrl', 1200) &&
+        optionalString(data, 'heroVideoUrl', 1200) &&
+        optionalNumber(data, 'videoStartOffsetSec') &&
+        optionalString(data, 'heroAssetTitle', 300) &&
+        optionalString(data, 'shotBrief', 600) &&
+        optionalString(data, 'assetSearchQuery', 300) &&
+        optionalString(data, 'rigPrompt', 600) &&
+        optionalString(data, 'onScreenText', 300) &&
+        optionalString(data, 'triggerWord', 100) &&
+        optionalNumber(data, 'worldX') &&
+        optionalNumber(data, 'worldY') &&
+        optionalNumber(data, 'worldRotation') &&
+        optionalNumber(data, 'worldScale') &&
+        optionalNumber(data, 'cameraZoom') &&
+        (!('transition' in data) || data.transition in ['continuous_glide', 'pull_reveal', 'desk_sweep', 'map_flight', 'whip_pan', 'paper_slide', 'zoom_punch', 'iris_reveal', 'cut_pop']) &&
+        (!('sfxCue' in data) || data.sfxCue in ['none', 'paper_slide', 'document_land', 'soft_impact', 'map_pin', 'whoosh', 'pop_in', 'stamp_hit', 'map_ping', 'chalk_draw']) &&
+        optionalString(data, 'notes', 600) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidRenderJob(data, projectId, renderId) {
+      return data.keys().hasAll(['id', 'ownerId', 'projectId', 'status', 'progress', 'width', 'height', 'fps', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly([
+          'id', 'ownerId', 'projectId', 'status', 'stage', 'progress', 'width', 'height',
+          'fps', 'aspectRatio', 'outputUrl', 'fileSizeBytes', 'durationSec', 'codecInfo',
+          'qaReport', 'qaFrames', 'errorMessage', 'createdAt', 'updatedAt'
+        ]) &&
+        data.id == renderId &&
+        data.projectId == projectId &&
+        data.ownerId == request.auth.uid &&
+        data.status in ['queued', 'rendering', 'encoding', 'qa_checking', 'completed', 'failed'] &&
+        data.progress is number && data.progress >= 0 && data.progress <= 100 &&
+        data.width is number && data.width >= 320 && data.width <= 7680 &&
+        data.height is number && data.height >= 240 && data.height <= 4320 &&
+        data.fps is number && data.fps >= 12 && data.fps <= 60 &&
+        optionalString(data, 'stage', 160) &&
+        optionalString(data, 'aspectRatio', 20) &&
+        optionalString(data, 'outputUrl', 1000) &&
+        optionalNumber(data, 'fileSizeBytes') &&
+        optionalNumber(data, 'durationSec') &&
+        optionalString(data, 'codecInfo', 200) &&
+        optionalMap(data, 'qaReport') &&
+        optionalList(data, 'qaFrames', 16) &&
+        optionalString(data, 'errorMessage', 1000) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    // --- Collection Rules ---
+
+    // Users: Strict PII isolation to owning user only
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
+      allow list: if false;
+      allow create: if isVerifiedUser() &&
+        isValidId(userId) &&
+        isValidUserProfile(incoming(), userId) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser() &&
+        isValidId(userId) &&
+        isValidUserProfile(incoming(), userId) &&
+        existing().uid == request.auth.uid &&
+        incoming().uid == existing().uid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['email', 'displayName', 'photoURL', 'updatedAt']);
+      allow delete: if false;
+    }
+
+    // Projects
+    match /projects/{projectId} {
+      allow get: if isSignedIn() && isValidId(projectId) && existing().ownerId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isVerifiedUser() &&
+        isValidId(projectId) &&
+        isValidProject(incoming(), projectId) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser() &&
+        isValidId(projectId) &&
+        isValidProject(incoming(), projectId) &&
+        existing().ownerId == request.auth.uid &&
+        incoming().id == existing().id &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          // Action 1: Metadata, settings & status management
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'title', 'topic', 'language', 'narratorLanguage', 'narratorAccent', 'voiceCharacter',
+            'targetDurationSec', 'aspectRatio', 'resolution', 'frameRate', 'visualStyle',
+            'videoStylePreset', 'worldEnvironment', 'status', 'activeStage', 'thumbnailUrl',
+            'researchPreferences', 'uploadedReferences', 'audioMixer', 'animatedRigsScriptHash', 'mediaFulfilledHash', 'updatedAt'
+          ]) ||
+          // Action 2: Research & visual direction updates
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'researchSummary', 'researchEntities', 'visualDirection', 'videoStylePreset',
+            'worldEnvironment', 'researchApproved', 'visualDirectionApproved', 'thumbnailUrl',
+            'activeStage', 'status', 'animatedRigsScriptHash', 'mediaFulfilledHash', 'updatedAt'
+          ]) ||
+          // Action 3: Script, Voice, Storyboard, Media approvals & audio/mixer state
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'scriptApproved', 'voiceApproved', 'storyboardApproved', 'assetsApproved', 'voiceProfile',
+            'audioPostProcessing', 'masterAudio', 'narrationDurationSec', 'audioMixer',
+            'videoStylePreset', 'worldEnvironment', 'activeStage', 'status', 'renderStatus',
+            'thumbnailUrl', 'animatedRigsScriptHash', 'mediaFulfilledHash', 'updatedAt'
+          ])
+        );
+      allow delete: if isVerifiedUser() && isValidId(projectId) && existing().ownerId == request.auth.uid;
+
+      // Subcollection: Research Sources
+      match /sources/{sourceId} {
+        allow get: if isSignedIn() && isValidId(projectId) && isValidId(sourceId) && existing().ownerId == request.auth.uid && isProjectOwner(projectId);
+        allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+        allow create: if isVerifiedUser() &&
+          isValidId(projectId) && isValidId(sourceId) &&
+          isValidSource(incoming(), projectId, sourceId) &&
+          incoming().createdAt == request.time &&
+          isProjectOwner(projectId);
+        allow update: if false;
+        allow delete: if isVerifiedUser() && isValidId(projectId) && isValidId(sourceId) && existing().ownerId == request.auth.uid && isProjectOwner(projectId);
+      }
+
+      // Subcollection: Archival & Reference Assets
+      match /assets/{assetId} {
+        allow get: if isSignedIn() && isValidId(projectId) && isValidId(assetId) && existing().ownerId == request.auth.uid && isProjectOwner(projectId);
+        allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+        allow create: if isVerifiedUser() &&
+          isValidId(projectId) && isValidId(assetId) &&
+          isValidAsset(incoming(), projectId, assetId) &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          isProjectOwner(projectId);
+        allow update: if isVerifiedUser() &&
+          isValidId(projectId) && isValidId(assetId) &&
+          isValidAsset(incoming(), projectId, assetId) &&
+          existing().ownerId == request.auth.uid &&
+          incoming().id == existing().id &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().projectId == existing().projectId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'title', 'description', 'imageUrl', 'videoUrl', 'thumbnailUrl', 'mediaKind', 'durationSec',
+            'creator', 'license', 'category', 'approvalStatus', 'downloadStatus',
+            'assignedSegmentId', 'assignedBeatId', 'limitationNote', 'animatedRigSpec', 'updatedAt'
+          ]) &&
+          isProjectOwner(projectId);
+        allow delete: if isVerifiedUser() && isValidId(projectId) && isValidId(assetId) && existing().ownerId == request.auth.uid && isProjectOwner(projectId);
+      }
+
+      // Subcollection: Script Versions
+      match /scripts/{scriptId} {
+        allow get: if isSignedIn() && isValidId(projectId) && isValidId(scriptId) && existing().ownerId == request.auth.uid && isProjectOwner(projectId);
+        allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+        allow create: if isVerifiedUser() &&
+          isValidId(projectId) && isValidId(scriptId) &&
+          isValidScriptVersion(incoming(), projectId, scriptId) &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          isProjectOwner(projectId);
+        allow update: if isVerifiedUser() &&
+          isValidId(projectId) && isValidId(scriptId) &&
+          isValidScriptVersion(incoming(), projectId, scriptId) &&
+          existing().ownerId == request.auth.uid &&
+          incoming().id == existing().id &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().projectId == existing().projectId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'label', 'isActive', 'isApproved', 'wordCount', 'estimatedDurationSec',
+            'paragraphs', 'pronunciationGuide', 'updatedAt'
+          ]) &&
+          isProjectOwner(projectId);
+        allow delete: if isVerifiedUser() && isValidId(projectId) && isValidId(scriptId) && existing().ownerId == request.auth.uid && isProjectOwner(projectId);
+      }
+
+      // Subcollection: Narration Segments
+      match /segments/{segmentId} {
+        allow get: if isSignedIn() && isValidId(projectId) && isValidId(segmentId) && existing().ownerId == request.auth.uid && isProjectOwner(projectId);
+        allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+        allow create: if isVerifiedUser() &&
+          isValidId(projectId) && isValidId(segmentId) &&
+          isValidSegment(incoming(), projectId, segmentId) &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          isProjectOwner(projectId);
+        allow update: if isVerifiedUser() &&
+          isValidId(projectId) && isValidId(segmentId) &&
+          isValidSegment(incoming(), projectId, segmentId) &&
+          existing().ownerId == request.auth.uid &&
+          incoming().id == existing().id &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().projectId == existing().projectId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'orderIndex', 'text', 'pronunciationHint', 'audioUrl', 'durationMs',
+            'status', 'wordTimestamps', 'pauseMarkers', 'version', 'updatedAt'
+          ]) &&
+          isProjectOwner(projectId);
+        allow delete: if isVerifiedUser() && isValidId(projectId) && isValidId(segmentId) && existing().ownerId == request.auth.uid && isProjectOwner(projectId);
+      }
+
+      // Subcollection: Storyboard Beats
+      match /beats/{beatId} {
+        allow get: if isSignedIn() && isValidId(projectId) && isValidId(beatId) && existing().ownerId == request.auth.uid && isProjectOwner(projectId);
+        allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+        allow create: if isVerifiedUser() &&
+          isValidId(projectId) && isValidId(beatId) &&
+          isValidBeat(incoming(), projectId, beatId) &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          isProjectOwner(projectId);
+        allow update: if isVerifiedUser() &&
+          isValidId(projectId) && isValidId(beatId) &&
+          isValidBeat(incoming(), projectId, beatId) &&
+          existing().ownerId == request.auth.uid &&
+          incoming().id == existing().id &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().projectId == existing().projectId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'orderIndex', 'segmentId', 'startMs', 'endMs', 'narrationText',
+            'heroAssetId', 'heroAssetUrl', 'heroVideoUrl', 'videoStartOffsetSec',
+            'heroAssetTitle', 'shotBrief', 'assetSearchQuery', 'rigPrompt', 'fulfillmentStatus',
+            'onScreenText', 'triggerWord', 'sceneType', 'illustrationPrompt', 'dateBadge', 'mapSpec',
+            'animatedRigSpec', 'calloutItems', 'highlightWords', 'wordTimestamps',
+            'objectType', 'worldX', 'worldY', 'worldRotation',
+            'worldScale', 'cameraMotion', 'cameraZoom', 'transition', 'sfxCue', 'notes', 'updatedAt'
+          ]) &&
+          isProjectOwner(projectId);
+        allow delete: if isVerifiedUser() && isValidId(projectId) && isValidId(beatId) && existing().ownerId == request.auth.uid && isProjectOwner(projectId);
+      }
+
+      // Subcollection: Render Jobs (Terminal lock once completed)
+      match /renders/{renderId} {
+        allow get: if isSignedIn() && isValidId(projectId) && isValidId(renderId) && existing().ownerId == request.auth.uid && isProjectOwner(projectId);
+        allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+        allow create: if isVerifiedUser() &&
+          isValidId(projectId) && isValidId(renderId) &&
+          isValidRenderJob(incoming(), projectId, renderId) &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          isProjectOwner(projectId);
+        allow update: if isVerifiedUser() &&
+          isValidId(projectId) && isValidId(renderId) &&
+          isValidRenderJob(incoming(), projectId, renderId) &&
+          existing().ownerId == request.auth.uid &&
+          existing().status != 'completed' &&
+          incoming().id == existing().id &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().projectId == existing().projectId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'status', 'stage', 'progress', 'outputUrl', 'fileSizeBytes',
+            'durationSec', 'codecInfo', 'qaReport', 'qaFrames', 'errorMessage', 'updatedAt'
+          ]) &&
+          isProjectOwner(projectId);
+        allow delete: if isVerifiedUser() && isValidId(projectId) && isValidId(renderId) && existing().ownerId == request.auth.uid && isProjectOwner(projectId);
+      }
+    }
+  }
+}

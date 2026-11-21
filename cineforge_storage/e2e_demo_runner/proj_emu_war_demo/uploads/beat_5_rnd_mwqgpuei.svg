@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#161922"/>
+      <stop offset="100%" stop-color="#222736"/>
+    </linearGradient>
+    <radialGradient id="spotGrad" cx="50%" cy="45%" r="60%">
+      <stop offset="0%" stop-color="#EF4444" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#161922" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1280" height="720" fill="url(#bgGrad)"/>
+  <rect width="1280" height="720" fill="url(#spotGrad)"/>
+  <!-- Subtle background editorial framing lines -->
+  <g opacity="0.16" stroke="#F59E0B" stroke-width="2" fill="none">
+    <circle cx="170" cy="140" r="110"/>
+    <circle cx="1115" cy="575" r="140"/>
+    <line x1="72" y1="640" x2="1208" y2="640"/>
+  </g>
+  
+      <g transform="translate(640, 365)">
+        <path d="M-360,170 Q-180,90 0,130 Q180,170 360,95 L360,240 L-360,240 Z" fill="#D4BE98" stroke="#0E121A" stroke-width="2.5" opacity="0.9"/>
+        <path d="M-190,120 L-190,-95 L-110,-145 L-30,-95 L-30,120 Z" fill="#F4EFE4" stroke="#FFFFFF" stroke-width="8"/>
+        <rect x="-150" y="-45" width="38" height="62" rx="19" fill="#222736" stroke="#0E121A" stroke-width="3"/>
+        <line x1="65" y1="120" x2="65" y2="-165" stroke="#0E121A" stroke-width="8" stroke-linecap="round"/>
+        <path d="M68,-160 L245,-125 L205,-78 L245,-35 L68,-52 Z" fill="#F59E0B" stroke="#FFFFFF" stroke-width="5"/>
+        <polygon points="145,-118 154,-94 180,-94 159,-79 167,-55 145,-70 123,-55 131,-79 110,-94 136,-94" fill="#EF4444"/>
+        <circle cx="-275" cy="-120" r="46" fill="#EF4444" opacity="0.88"/>
+        <path d="M-240,145 L180,145" stroke="#F59E0B" stroke-width="8" stroke-dasharray="18 12" stroke-linecap="round"/>
+        <polygon points="195,145 162,126 162,164" fill="#F59E0B"/>
+      </g>
+  <!-- Subtle corner editorial plate label -->
+  <g transform="translate(56, 56)" opacity="0.88">
+    <rect x="0" y="0" width="380" height="36" rx="4" fill="#222736" stroke="#F59E0B" stroke-width="1.5"/>
+    <text x="16" y="23" font-family="sans-serif" font-size="15" font-weight="700" fill="#F9FAFB" letter-spacing="1.2">AUSTRALIAN GUNNERS OPERATING A LEWIS MACHINE GUN</text>
+  </g>
+</svg>

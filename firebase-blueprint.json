@@ -1,0 +1,266 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated CineForge creator profile isolated to the owning user.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "email": { "type": "string", "format": "email", "maxLength": 254 },
+        "displayName": { "type": "string", "maxLength": 120 },
+        "photoURL": { "type": "string", "maxLength": 1000 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "displayName", "createdAt", "updatedAt"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "Documentary production project spanning research, script, voice, assets, storyboard, motion world, and render settings.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "inputMode": { "type": "string", "enum": ["topic", "script", "voiceover"] },
+        "topic": { "type": "string", "maxLength": 4000 },
+        "language": { "type": "string", "maxLength": 60 },
+        "narratorLanguage": { "type": "string", "maxLength": 60 },
+        "narratorAccent": { "type": "string", "maxLength": 120 },
+        "voiceCharacter": { "type": "string", "maxLength": 120 },
+        "targetDurationSec": { "type": "number" },
+        "aspectRatio": { "type": "string", "maxLength": 20 },
+        "resolution": { "type": "string", "maxLength": 30 },
+        "frameRate": { "type": "number" },
+        "visualStyle": { "type": "string", "maxLength": 500 },
+        "videoStylePreset": { "type": "string", "enum": ["ted_ed", "simple_history", "history_on_maps", "minute_earth", "historically", "archival_documentary"] },
+        "worldEnvironment": { "type": "string", "enum": ["desk", "map", "board", "archive"] },
+        "status": { "type": "string", "enum": ["draft", "in_production", "rendered", "archived"] },
+        "activeStage": { "type": "string", "enum": ["research", "script", "voice", "assets", "storyboard", "motion", "render"] },
+        "thumbnailUrl": { "type": "string", "maxLength": 1000 },
+        "narrationDurationSec": { "type": "number" },
+        "renderStatus": { "type": "string", "enum": ["idle", "rendering", "completed", "failed"] },
+        "researchApproved": { "type": "boolean" },
+        "visualDirectionApproved": { "type": "boolean" },
+        "scriptApproved": { "type": "boolean" },
+        "voiceApproved": { "type": "boolean" },
+        "storyboardApproved": { "type": "boolean" },
+        "assetsApproved": { "type": "boolean" },
+        "researchSummary": { "type": "string", "maxLength": 20000 },
+        "researchPreferences": { "type": "string", "maxLength": 4000 },
+        "visualDirection": { "type": "object" },
+        "researchEntities": { "type": "object" },
+        "voiceProfile": { "type": "object" },
+        "audioPostProcessing": { "type": "object" },
+        "masterAudio": { "type": "object" },
+        "audioMixer": { "type": "object" },
+        "uploadedReferences": { "type": "array" },
+        "animatedRigsScriptHash": { "type": "string", "maxLength": 128 },
+        "mediaFulfilledHash": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "ownerId", "title", "inputMode", "status", "activeStage", "renderStatus", "createdAt", "updatedAt"]
+    },
+    "ResearchSource": {
+      "title": "ResearchSource",
+      "description": "Verified institutional or historical research citation gathered via Gemini Search Grounding.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "projectId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "maxLength": 300 },
+        "url": { "type": "string", "maxLength": 1000 },
+        "publisher": { "type": "string", "maxLength": 160 },
+        "sourceType": { "type": "string", "maxLength": 60 },
+        "summary": { "type": "string", "maxLength": 3000 },
+        "dateRange": { "type": "string", "maxLength": 80 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "ownerId", "projectId", "title", "url", "createdAt"]
+    },
+    "Asset": {
+      "title": "Asset",
+      "description": "Authentic archival photograph, map, document, editorial illustration, or user reference with full attribution and license metadata.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "projectId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "maxLength": 300 },
+        "description": { "type": "string", "maxLength": 2000 },
+        "sourceProvider": { "type": "string", "enum": ["wikimedia", "wikimedia_video", "loc", "nasa", "nasa_video", "upload", "ai_illustration", "code_animation"] },
+        "sourceUrl": { "type": "string", "maxLength": 1200 },
+        "imageUrl": { "type": "string", "maxLength": 1200 },
+        "videoUrl": { "type": "string", "maxLength": 1200 },
+        "thumbnailUrl": { "type": "string", "maxLength": 1200 },
+        "mediaKind": { "type": "string", "enum": ["image", "video", "animated_rig"] },
+        "durationSec": { "type": "number" },
+        "creator": { "type": "string", "maxLength": 300 },
+        "license": { "type": "string", "maxLength": 200 },
+        "category": { "type": "string", "enum": ["photograph", "video_clip", "map", "document", "newspaper", "archive", "reference", "illustration", "animated_rig"] },
+        "approvalStatus": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "downloadStatus": { "type": "string", "enum": ["ready", "missing", "unavailable"] },
+        "assignedSegmentId": { "type": "string", "maxLength": 128 },
+        "assignedBeatId": { "type": "string", "maxLength": 128 },
+        "limitationNote": { "type": "string", "maxLength": 600 },
+        "animatedRigSpec": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "ownerId", "projectId", "title", "sourceProvider", "category", "approvalStatus", "downloadStatus", "createdAt", "updatedAt"]
+    },
+    "ScriptVersion": {
+      "title": "ScriptVersion",
+      "description": "Versioned documentary script with paragraph segments and pronunciation guidance.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "projectId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "versionNumber": { "type": "number" },
+        "label": { "type": "string", "maxLength": 160 },
+        "isActive": { "type": "boolean" },
+        "isApproved": { "type": "boolean" },
+        "wordCount": { "type": "number" },
+        "estimatedDurationSec": { "type": "number" },
+        "paragraphs": { "type": "array" },
+        "pronunciationGuide": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "ownerId", "projectId", "versionNumber", "isActive", "isApproved", "paragraphs", "createdAt", "updatedAt"]
+    },
+    "NarrationSegment": {
+      "title": "NarrationSegment",
+      "description": "Individual spoken narration segment with generated WAV audio URL, duration, and extracted word-level timestamps.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "projectId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "orderIndex": { "type": "number" },
+        "text": { "type": "string", "maxLength": 5000 },
+        "pronunciationHint": { "type": "string", "maxLength": 500 },
+        "audioUrl": { "type": "string", "maxLength": 1000 },
+        "durationMs": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "generated", "approved", "uploaded"] },
+        "wordTimestamps": { "type": "array" },
+        "pauseMarkers": { "type": "array" },
+        "version": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "ownerId", "projectId", "orderIndex", "text", "status", "createdAt", "updatedAt"]
+    },
+    "StoryboardBeat": {
+      "title": "StoryboardBeat",
+      "description": "Voice-synchronized 3-5s visual beat mapping narration words to illustrations, animated maps, cutouts, callouts, kinetic typography, and camera movement.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "projectId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "orderIndex": { "type": "number" },
+        "segmentId": { "type": "string", "maxLength": 128 },
+        "startMs": { "type": "number" },
+        "endMs": { "type": "number" },
+        "narrationText": { "type": "string", "maxLength": 2000 },
+        "heroAssetId": { "type": "string", "maxLength": 128 },
+        "heroAssetUrl": { "type": "string", "maxLength": 1200 },
+        "heroVideoUrl": { "type": "string", "maxLength": 1200 },
+        "videoStartOffsetSec": { "type": "number" },
+        "heroAssetTitle": { "type": "string", "maxLength": 300 },
+        "shotBrief": { "type": "string", "maxLength": 600 },
+        "assetSearchQuery": { "type": "string", "maxLength": 300 },
+        "rigPrompt": { "type": "string", "maxLength": 600 },
+        "fulfillmentStatus": { "type": "string", "enum": ["planned", "fulfilled", "fallback"] },
+        "onScreenText": { "type": "string", "maxLength": 300 },
+        "triggerWord": { "type": "string", "maxLength": 100 },
+        "sceneType": { "type": "string", "enum": ["animated_rig", "archival_video", "illustrated_scene", "animated_map", "layered_cutout", "diagram_callout", "archival_photo", "kinetic_title"] },
+        "illustrationPrompt": { "type": "string", "maxLength": 1200 },
+        "dateBadge": { "type": "string", "maxLength": 80 },
+        "mapSpec": { "type": "object" },
+        "animatedRigSpec": { "type": "object" },
+        "calloutItems": { "type": "array" },
+        "highlightWords": { "type": "array" },
+        "wordTimestamps": { "type": "array" },
+        "objectType": { "type": "string", "enum": ["photo", "video_clip", "document", "newspaper", "map", "title_card", "illustration", "cutout", "diagram", "animated_rig"] },
+        "worldX": { "type": "number" },
+        "worldY": { "type": "number" },
+        "worldRotation": { "type": "number" },
+        "worldScale": { "type": "number" },
+        "cameraMotion": { "type": "string", "enum": ["push_in", "pull_back", "pan_left", "pan_right", "orbit_drift", "focus_hold"] },
+        "cameraZoom": { "type": "number" },
+        "transition": { "type": "string", "enum": ["continuous_glide", "pull_reveal", "desk_sweep", "map_flight", "whip_pan", "paper_slide", "zoom_punch", "iris_reveal", "cut_pop"] },
+        "sfxCue": { "type": "string", "enum": ["none", "paper_slide", "document_land", "soft_impact", "map_pin", "whoosh", "pop_in", "stamp_hit", "map_ping", "chalk_draw"] },
+        "notes": { "type": "string", "maxLength": 600 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "ownerId", "projectId", "orderIndex", "startMs", "endMs", "narrationText", "objectType", "cameraMotion", "createdAt", "updatedAt"]
+    },
+    "RenderJob": {
+      "title": "RenderJob",
+      "description": "MP4 rendering job record with progress stage, technical validation metrics, and extracted QA frames.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ownerId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "projectId": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "status": { "type": "string", "enum": ["queued", "rendering", "encoding", "qa_checking", "completed", "failed"] },
+        "stage": { "type": "string", "maxLength": 160 },
+        "progress": { "type": "number" },
+        "width": { "type": "number" },
+        "height": { "type": "number" },
+        "fps": { "type": "number" },
+        "aspectRatio": { "type": "string", "maxLength": 20 },
+        "outputUrl": { "type": "string", "maxLength": 1000 },
+        "fileSizeBytes": { "type": "number" },
+        "durationSec": { "type": "number" },
+        "codecInfo": { "type": "string", "maxLength": 200 },
+        "qaReport": { "type": "object" },
+        "qaFrames": { "type": "array" },
+        "errorMessage": { "type": "string", "maxLength": 1000 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "ownerId", "projectId", "status", "progress", "width", "height", "fps", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Authenticated user profiles isolated strictly to the owning user."
+    },
+    "/projects/{projectId}": {
+      "schema": { "$ref": "#/entities/Project" },
+      "description": "User-owned CineForge documentary projects."
+    },
+    "/projects/{projectId}/sources/{sourceId}": {
+      "schema": { "$ref": "#/entities/ResearchSource" },
+      "description": "Verified research sources and citations belonging to a project."
+    },
+    "/projects/{projectId}/assets/{assetId}": {
+      "schema": { "$ref": "#/entities/Asset" },
+      "description": "Authentic archival photographs, maps, documents, and reference assets."
+    },
+    "/projects/{projectId}/scripts/{scriptId}": {
+      "schema": { "$ref": "#/entities/ScriptVersion" },
+      "description": "Versioned documentary script snapshots and pronunciation guidance."
+    },
+    "/projects/{projectId}/segments/{segmentId}": {
+      "schema": { "$ref": "#/entities/NarrationSegment" },
+      "description": "Synthesized or uploaded narration audio segments and word timestamps."
+    },
+    "/projects/{projectId}/beats/{beatId}": {
+      "schema": { "$ref": "#/entities/StoryboardBeat" },
+      "description": "Master-timeline synchronized storyboard beats and camera instructions."
+    },
+    "/projects/{projectId}/renders/{renderId}": {
+      "schema": { "$ref": "#/entities/RenderJob" },
+      "description": "MP4 render jobs, technical reports, and extracted QA frames."
+    }
+  }
+}
